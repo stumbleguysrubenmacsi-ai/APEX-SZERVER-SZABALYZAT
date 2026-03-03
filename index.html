@@ -1,0 +1,168 @@
+ApexRP = {}
+
+-- === 1. Deathmatching (DM), Drive-by (DB) és Spawn Kill (SK) ===
+function ApexRP:checkCombatRules(player, action, target)
+    if action == "DM" then
+        print(player.." DM-t követtek el! Tiltva van nyomós indok nélkül.")
+        return false
+    elseif action == "DB" then
+        if target.dead then
+            print(player.." DB-t követtek el! Tiltva van kocsival ölés.")
+            return false
+        else
+            print(player.." DB nem számít, mert célpont nem halt meg.")
+            return true
+        end
+    elseif action == "SK" then
+        local exceptions = {"Bobcat", "HumanLabs", "Szállítások", "Yacht"}
+        for _, rbl in ipairs(exceptions) do
+            if target.zone == rbl then
+                return true
+            end
+        end
+        print(player.." SK tiltott a spawnnál!")
+        return false
+    end
+    return true
+end
+
+-- === 2. Revenge Kill (RK) ===
+function ApexRP:checkRevengeKill(player, target)
+    if player.followsTargetAfterRespawn then
+        print(player.." RK tiltott!")
+        return false
+    end
+    return true
+end
+
+-- === 3. Power Gaming (PG) ===
+function ApexRP:checkPowerGaming(player, armedEnemies, situation)
+    if armedEnemies >= 2 and situation ~= "1v1" then
+        print(player.." PG tiltott: ne viselkedj legyőzhetetlenként!")
+        return false
+    end
+    return true
+end
+
+-- === 4. Meta Gaming (MG) ===
+function ApexRP:checkMetaGaming(player)
+    if player.usesOOCInfo or player.inActiveDiscordVoice then
+        print(player.." MG tiltott! Ne használd OOC infót IC-be!")
+        return false
+    end
+    return true
+end
+
+-- === 5. Force RP ===
+function ApexRP:checkForceRP(player, target, action)
+    local forceActions = {"kannibalizmus", "boncolás", "morbid"}
+    for _, act in ipairs(forceActions) do
+        if action == act and not (player.consent and target.consent) then
+            print("Force RP! RP alól kilépés engedélyezett és 500 közmunka!")
+            return false
+        end
+    end
+    return true
+end
+
+-- === 6. OOC szabályok ===
+function ApexRP:checkOOC(player, action)
+    if action == "VoiceChat" and not player.adminPresent then
+        print("OOC beszéd tiltva van!")
+        return false
+    end
+    if action == "OOCTrade" then
+        print("OOC kereskedelem tiltva! Örökös ban jár.")
+        return false
+    end
+    return true
+end
+
+-- === 7. NRK szabályok ===
+function ApexRP:checkVehicleRules(player, vehicle)
+    if vehicle.type == "sportcar" or vehicle.type == "sportbike" then
+        if vehicle.onTerrain then
+            print(player.." tilos terepen vezetni sport járművet!")
+            return false
+        end
+        if vehicle.speed > 100 then
+            print(player.." túl gyorsan ment földes úton!")
+            return false
+        end
+    end
+    return true
+end
+
+-- === 8. Publikus területen bűncselekmény ===
+function ApexRP:checkPublicCrime(player, zone)
+    local protectedZones = {"garázs", "kórház", "városháza", "rendőrség", "autókereskedés", "olvasztó", "vidámpark"}
+    for _, z in ipairs(protectedZones) do
+        if zone == z then
+            print(player.." nem követhet el bűncselekményt publikus területen!")
+            return false
+        end
+    end
+    return true
+end
+
+-- === 9. Character Kill (CK) szabályok ===
+function ApexRP:checkCK(player, type, rpWeeks, adminPresent)
+    if type == "InfoCK" and rpWeeks < 2 then
+        print("CK tiltott: minimum 2 hét RP előzmény kell!")
+        return false
+    elseif type == "FullCK" and rpWeeks < 5 then
+        print("Teljes CK tiltott: minimum 5 hét RP előzmény kell!")
+        return false
+    elseif not adminPresent then
+        print("CK csak admin jelenlétében lehetséges!")
+        return false
+    end
+    return true
+end
+
+-- === 10. Bugok kihasználása ===
+function ApexRP:checkBugUsage(player)
+    if player.exploitsBug then
+        print(player.." hiba kihasználás! PERMA BAN jár.")
+        return false
+    end
+    return true
+end
+
+-- === 11. Fiók megosztás ===
+function ApexRP:checkAccountSharing(player)
+    if player.sharedAccount then
+        print(player.." fiók megosztás tiltott!")
+        return false
+    end
+    return true
+end
+
+-- === 19. Illegális tevékenységek ===
+function ApexRP:checkIllegalActivity(player, situation)
+    if situation.victimCooperates and situation.shooting then
+        print(player.." tiltott lelőni együttműködő áldozatot!")
+        return false
+    end
+    if situation.illegalRaid and situation.multipleFracs then
+        print(player.." erősítést nem hívhatsz, tiltott szövetség!")
+        return false
+    end
+    return true
+end
+
+-- Példa hívás:
+local player = {followsTargetAfterRespawn=false, usesOOCInfo=false, inActiveDiscordVoice=false, consent=true, sharedAccount=false, exploitsBug=false, adminPresent=true}
+local target = {dead=false, zone="Bobcat", consent=true}
+ApexRP:checkCombatRules("Player1","DB",target)
+ApexRP:checkRevengeKill(player, target)
+ApexRP:checkPowerGaming(player, 2, "hostage")
+ApexRP:checkMetaGaming(player)
+ApexRP:checkForceRP(player, target, "boncolás")
+ApexRP:checkOOC(player, "VoiceChat")
+ApexRP:checkVehicleRules(player, {type="sportcar", onTerrain=false, speed=80})
+ApexRP:checkPublicCrime("Player1", "városháza")
+ApexRP:checkCK(player, "InfoCK", 3, true)
+ApexRP:checkBugUsage(player)
+ApexRP:checkAccountSharing(player)
+ApexRP:checkIllegalActivity(player, {victimCooperates=true, shooting=false, illegalRaid=false, multipleFracs=false})
